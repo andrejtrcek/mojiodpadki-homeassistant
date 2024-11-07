@@ -1,0 +1,76 @@
+sensor:
+  - platform: rest
+    name: mojiodpadki
+    resource: http://www.mojiodpadki.si/api/
+    method: POST
+    scan_interval: 86400
+    payload: '{ "method": "takeout-dates", "subscriber": "", "place": "", "address": "[INSERT ID]" }'
+    value_template: "{{ value_json.dates | tojson }}"
+    headers:
+      Content-Type: application/json
+    json_attributes:
+      - dates
+  - platform: template
+    sensors:
+      dates_for_emb:
+        friendly_name: "Datumi za embalazo"
+        value_template: >
+          {%- set emb_dates = namespace(dates=[]) %}
+          {%- for key, value in state_attr('sensor.mojiodpadki', 'dates').items() %}
+            {%- if 'EMB' in value %}
+              {%- set emb_dates.dates = emb_dates.dates + [key] %}
+            {%- endif %}
+          {%- endfor %}
+          {{ emb_dates.dates | join(', ') }}
+  - platform: template
+    sensors:
+      next_emb_date:
+        friendly_name: "Naslednji datum za embalazo"
+        value_template: >
+          {%- set emb_dates = states('sensor.dates_for_emb').split(', ') %}
+          {%- set today = now() %}
+          {%- set future_dates = emb_dates 
+            | select('string') 
+            | select('match', '^\d{4}-\d{2}-\d{2}$') 
+            | map('as_datetime') 
+            | map('as_local')
+            | select('>=', today) 
+            | sort %}
+          {%- if future_dates | list | count > 0 %}
+            {%- set next_date = future_dates | first %}
+            {{ next_date.strftime('%Y-%m-%d') }}
+          {%- else %}
+            Ni prihodnjih datumov
+          {%- endif %}
+  - platform: template
+    sensors:
+      dates_for_mko:
+        friendly_name: "Datumi za mesane odpadke"
+        value_template: >
+          {%- set mko_dates = namespace(dates=[]) %}
+          {%- for key, value in state_attr('sensor.mojiodpadki', 'dates').items() %}
+            {%- if 'MKO' in value %}
+              {%- set mko_dates.dates = mko_dates.dates + [key] %}
+            {%- endif %}
+          {%- endfor %}
+          {{ mko_dates.dates | join(', ') }}
+  - platform: template
+    sensors:
+      next_mko_date:
+        friendly_name: "Naslednji datum za mesane odpadke"
+        value_template: >
+          {%- set mko_dates = states('sensor.dates_for_mko').split(', ') %}
+          {%- set today = now() %}
+          {%- set future_dates = mko_dates 
+            | select('string') 
+            | select('match', '^\d{4}-\d{2}-\d{2}$') 
+            | map('as_datetime') 
+            | map('as_local')
+            | select('>=', today) 
+            | sort %}
+          {%- if future_dates | list | count > 0 %}
+            {%- set next_date = future_dates | first %}
+            {{ next_date.strftime('%Y-%m-%d') }}
+          {%- else %}
+            Ni prihodnjih datumov
+          {%- endif %}
