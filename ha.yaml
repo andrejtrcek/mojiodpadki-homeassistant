@@ -5,7 +5,7 @@ sensor:
     method: POST
     scan_interval: 86400
     payload: '{ "method": "takeout-dates", "subscriber": "", "place": "", "address": "[INSERT ID]" }'
-    value_template: "{{ value_json.dates | tojson }}"
+    value_template: "{{ value_json.address }}"
     headers:
       Content-Type: application/json
     json_attributes:
